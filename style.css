@@ -1,0 +1,112 @@
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    background-color: #f4f4f4;
+    color: #333;
+}
+.container {
+    width: 80%;
+    margin: auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+h1, h2 {
+    color: #333;
+}
+
+/* Form styling */
+form label {
+    display: block;
+    margin-bottom: 5px;
+}
+form input[type="text"],
+form input[type="email"],
+form input[type="tel"] {
+    width: calc(100% - 22px); /* Account for padding and border */
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box; /* So width includes padding and border */
+}
+button[type="submit"], .button-link {
+    background-color: #5cb85c; /* Green for add/update */
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none; /* For button-link */
+    display: inline-block; /* For button-link */
+    font-size: 1em; /* Ensure consistent font size */
+}
+button[type="submit"]:hover, .button-link:hover {
+    background-color: #4cae4c;
+}
+
+/* Specific style for delete button in table */
+table form button[type="submit"] {
+    background-color: #d9534f; /* Red for delete */
+    margin-top: 0; /* Reset margin if any from general button styling */
+}
+table form button[type="submit"]:hover {
+    background-color: #c9302c;
+}
+
+/* General form submit buttons (Add Contact, Update Contact) */
+form > button[type="submit"] { /* Targets direct children of form, not in table */
+     margin-top: 10px;
+}
+
+
+/* Table styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+table, th, td {
+    border: 1px solid #ddd;
+}
+th, td {
+    padding: 12px;
+    text-align: left;
+}
+th {
+    background-color: #f0f0f0;
+}
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.actions a, .actions form { /* For Edit link and Delete form */
+    margin-right: 5px;
+    display: inline-block; /* Align items nicely */
+}
+.actions form button[type="submit"] { /* Ensure delete button in actions cell is styled correctly */
+    padding: 8px 12px; /* Slightly smaller padding for table buttons */
+}
+
+
+/* Link styling (for "Cancel" and "Edit" which are not buttons) */
+a {
+    color: #007bff;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* Edit link specifically, if it needs to stand out or be styled like a button */
+.actions a { /* Targeting Edit link within .actions cell */
+    padding: 8px 12px;
+    background-color: #f0ad4e; /* Orange for edit */
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+}
+.actions a:hover {
+    background-color: #ec971f;
+    text-decoration: none;
+}

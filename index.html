@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>Contact Manager</h1>
+
+    <form action="/add_contact" method="POST">
+        <label for="name">Name:</label><input type="text" id="name" name="name" required><br><br>
+        <label for="email">Email:</label><input type="email" id="email" name="email"><br><br>
+        <label for="phone">Phone:</label><input type="tel" id="phone" name="phone"><br><br>
+
+        <label for="passport_number">Passport Number:</label>
+        <input type="text" id="passport_number" name="passport_number"><br><br>
+
+        <label for="drivers_license_number">Driver's License Number:</label>
+        <input type="text" id="drivers_license_number" name="drivers_license_number"><br><br>
+
+        <label for="medicare_number">Medicare Number:</label>
+        <input type="text" id="medicare_number" name="medicare_number"><br><br>
+
+        <button type="submit">Add Contact</button>
+    </form>
+
+    <h2>Contacts</h2>
+    {% if contacts %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Passport No.</th>
+                <th>Driver's License</th>
+                <th>Medicare No.</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contact in contacts %}
+            <tr>
+                <td>{{ contact['name'] }}</td>
+                <td>{{ contact['email'] }}</td>
+                <td>{{ contact['phone'] }}</td>
+                <td>{{ contact['passport_number'] }}</td>
+                <td>{{ contact['drivers_license_number'] }}</td>
+                <td>{{ contact['medicare_number'] }}</td>
+                <td class="actions">
+                    <a href="{{ url_for('edit_contact', contact_id=contact['id']) }}">Edit</a>
+                    <form action="{{ url_for('delete_contact', contact_id=contact['id']) }}" method="POST" style="display:inline;">
+                        <button type="submit" onclick="return confirm('Are you sure you want to delete this contact?');">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No contacts yet.</p>
+    {% endif %}
+</div>
+</body>
+</html>
+
