@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Contact</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<div class="container">
+{% extends "base.html" %}
+
+{% block title %}Edit Contact{% endblock %}
+
+{% block content %}
     <h1>Edit Contact</h1>
 
     {% if contact %}
@@ -37,7 +32,5 @@
     <p>Contact not found.</p>
     <a href="{{ url_for('index') }}" class="button-link">Back to Home</a>
     {% endif %}
-</div>
-</body>
-</html>
+{% endblock %}
 
