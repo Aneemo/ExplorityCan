@@ -12,7 +12,6 @@ app.config['SECRET_KEY'] = 'your_secret_key_here'  # Replace with a real secret 
 
 login_manager = LoginManager()
 login_manager.init_app(app)
-
 login_manager.login_view = 'login'
 
 def admin_required(f):
@@ -64,7 +63,6 @@ def init_db(commit_changes=True):
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
         ''')
-        # Add users table
         cur.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,7 +129,6 @@ def promote_users():
     conn = get_db_connection()
     try:
         cur = conn.cursor()
-        # Create placeholders for SQL query to prevent injection
         placeholders = ', '.join('?' for _ in user_ids_to_promote)
         query = f"UPDATE users SET role = 'admin' WHERE id IN ({placeholders})"
 
@@ -167,8 +164,6 @@ def index():
         
         # ---- START DEBUG PRINT IN APP.PY ----
         if contacts_data:
-            # Ensure all keys are present if you are accessing them directly, especially user_id
-            # For example, convert to dict to be safe if structure varies
             first_contact_dict = dict(contacts_data[0])
             print(f"DEBUG APP.PY: First contact raw data from fetchall: {first_contact_dict}")
             print(f"DEBUG APP.PY: Keys in first contact: {list(first_contact_dict.keys())}")
@@ -190,8 +185,8 @@ def index():
 @login_required
 def add_contact():
     name = request.form['name']
-    email = request.form.get('email') # Use .get() for optional fields
-    phone = request.form.get('phone') # Use .get() for optional fields
+    email = request.form.get('email')
+    phone = request.form.get('phone')
     passport_number = request.form.get('passport_number')
     drivers_license_number = request.form.get('drivers_license_number')
     medicare_number = request.form.get('medicare_number')
@@ -205,8 +200,7 @@ def add_contact():
         """, (name, email, phone, passport_number, drivers_license_number, medicare_number, current_user.id))
         conn.commit()
     except sqlite3.Error as e:
-        print(f"Database error: {e}") # For now, just print the error
-        # Later, you might want to flash a message to the user
+        print(f"Database error: {e}")
     finally:
         if conn:
             conn.close()
@@ -219,7 +213,6 @@ def edit_contact(contact_id):
     contact = None
     try:
         cur = conn.cursor()
-        # Fetch user_id along with other contact details
         cur.execute("SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts WHERE id = ?", (contact_id,))
         contact = cur.fetchone()
     except sqlite3.Error as e:
@@ -229,10 +222,9 @@ def edit_contact(contact_id):
             conn.close()
 
     if contact:
-        # Authorization check
         if current_user.role == 'user' and contact['user_id'] != current_user.id:
             flash("You are not authorized to edit this contact.", "error")
-            return redirect(url_for('index')) # Or a 403 page: abort(403)
+            return redirect(url_for('index'))
         return render_template('edit_contact.html', contact=contact)
     else:
         return "Contact not found", 404
@@ -240,7 +232,7 @@ def edit_contact(contact_id):
 @app.route('/update/<int:contact_id>', methods=['POST'])
 @login_required
 def update_contact(contact_id):
-    name = request.form['name'] # Name is required
+    name = request.form['name']
     email = request.form.get('email')
     phone = request.form.get('phone')
     passport_number = request.form.get('passport_number')
@@ -250,21 +242,17 @@ def update_contact(contact_id):
     conn = get_db_connection()
     try:
         cur = conn.cursor()
-
-        # First, verify ownership or admin role
         cur.execute("SELECT user_id FROM contacts WHERE id = ?", (contact_id,))
         contact_to_update = cur.fetchone()
 
         if not contact_to_update:
             flash("Contact not found.", "error")
-            return redirect(url_for('index')) # Or 404
+            return redirect(url_for('index'))
 
         if current_user.role == 'user' and contact_to_update['user_id'] != current_user.id:
             flash("You are not authorized to update this contact.", "error")
-            # abort(403) # For API-like behavior
-            return redirect(url_for('index')) # For web app behavior
+            return redirect(url_for('index'))
 
-        # If authorized, proceed with update
         cur.execute("""
             UPDATE contacts 
             SET name = ?, email = ?, phone = ?, 
@@ -288,19 +276,14 @@ def delete_contact(contact_id):
     try:
         cur = conn.cursor()
         if current_user.role == 'admin':
-            # Admin can delete any contact
             cur.execute("DELETE FROM contacts WHERE id = ?", (contact_id,))
-            # Check if any row was affected to see if contact existed
             if cur.rowcount == 0:
                 flash("Contact not found or already deleted.", "error")
             else:
                 flash("Contact deleted successfully by admin.", "success")
         else:
-            # User can only delete their own contacts
             cur.execute("DELETE FROM contacts WHERE id = ? AND user_id = ?", (contact_id, current_user.id))
-            # Check if any row was affected
             if cur.rowcount == 0:
-                # This could mean contact not found OR not owned by user
                 flash("Contact not found or you are not authorized to delete it.", "error")
             else:
                 flash("Contact deleted successfully.", "success")
@@ -312,9 +295,6 @@ def delete_contact(contact_id):
         if conn:
             conn.close()
     return redirect(url_for('index'))
-
-if __name__ == '__main__':
-    app.run(debug=True)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -339,7 +319,6 @@ def register():
                 return redirect(url_for('register'))
 
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-            # Role will be handled by DB default or later step in RBAC plan
             cur.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, hashed_password))
             conn.commit()
             flash('Registration successful! Please login.', 'success')
@@ -381,3 +360,6 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
