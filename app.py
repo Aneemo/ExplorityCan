@@ -1,5 +1,6 @@
 import sqlite3
 import click
+from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import bcrypt
@@ -11,7 +12,17 @@ app.config['SECRET_KEY'] = 'your_secret_key_here'  # Replace with a real secret 
 
 login_manager = LoginManager()
 login_manager.init_app(app)
+
 login_manager.login_view = 'login'
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            flash("You do not have permission to access this page.", "error")
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 class User(UserMixin):
     def __init__(self, id, username, password_hash, role):
@@ -98,6 +109,44 @@ def promote_user_command(username):
     finally:
         if conn:
             conn.close()
+
+@app.route('/admin/dashboard')
+@login_required
+@admin_required
+def admin_dashboard():
+    conn = get_db_connection()
+    users = conn.execute('SELECT id, username, role FROM users ORDER BY username').fetchall()
+    conn.close()
+    return render_template('admin_dashboard.html', users=users)
+
+@app.route('/admin/promote', methods=['POST'])
+@login_required
+@admin_required
+def promote_users():
+    user_ids_to_promote = request.form.getlist('user_ids')
+    if not user_ids_to_promote:
+        flash("No users selected for promotion.", "warning")
+        return redirect(url_for('admin_dashboard'))
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        # Create placeholders for SQL query to prevent injection
+        placeholders = ', '.join('?' for _ in user_ids_to_promote)
+        query = f"UPDATE users SET role = 'admin' WHERE id IN ({placeholders})"
+
+        cur.execute(query, user_ids_to_promote)
+        conn.commit()
+
+        flash(f"Successfully promoted {len(user_ids_to_promote)} user(s).", "success")
+    except sqlite3.Error as e:
+        print(f"Database error during promotion: {e}")
+        flash("Failed to promote users due to a database error.", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/')
 @login_required
