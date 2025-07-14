@@ -1,3 +1,4 @@
+# --- Start of app.py content ---
 import sqlite3
 import click
 from functools import wraps
@@ -98,7 +99,7 @@ def promote_user_command(username):
         if user['role'] == 'admin':
             click.echo(f"User {username} is already an admin.")
             return
-
+        
         cur.execute("UPDATE users SET role = 'admin' WHERE id = ?", (user['id'],))
         conn.commit()
         click.echo(f"User {username} has been promoted to admin.")
@@ -131,10 +132,10 @@ def promote_users():
         cur = conn.cursor()
         placeholders = ', '.join('?' for _ in user_ids_to_promote)
         query = f"UPDATE users SET role = 'admin' WHERE id IN ({placeholders})"
-
+        
         cur.execute(query, user_ids_to_promote)
         conn.commit()
-
+        
         flash(f"Successfully promoted {len(user_ids_to_promote)} user(s).", "success")
     except sqlite3.Error as e:
         print(f"Database error during promotion: {e}")
@@ -142,7 +143,7 @@ def promote_users():
     finally:
         if conn:
             conn.close()
-
+            
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/')
@@ -154,27 +155,13 @@ def index():
         cur = conn.cursor()
         if current_user.role == 'admin':
             sql_query = "SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts ORDER BY name"
-            print(f"DEBUG APP.PY (Admin): Executing query: {sql_query}") # DEBUG
             cur.execute(sql_query)
         else: # Regular user
             sql_query = "SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts WHERE user_id = ? ORDER BY name"
-            print(f"DEBUG APP.PY (User): Executing query: {sql_query} with user_id: {current_user.id}") # DEBUG
             cur.execute(sql_query, (current_user.id,))
         contacts_data = cur.fetchall()
-        
-        # ---- START DEBUG PRINT IN APP.PY ----
-        if contacts_data:
-            first_contact_dict = dict(contacts_data[0])
-            print(f"DEBUG APP.PY: First contact raw data from fetchall: {first_contact_dict}")
-            print(f"DEBUG APP.PY: Keys in first contact: {list(first_contact_dict.keys())}")
-        else:
-            print("DEBUG APP.PY: No contacts found in database by index route for current user/admin.")
-        # ---- END DEBUG PRINT IN APP.PY ----
-
     except sqlite3.Error as e:
         print(f"Database error in index route: {e}")
-    except IndexError:
-        print("DEBUG APP.PY: contacts_data is empty, cannot access contacts_data[0].") # Handle empty list
     finally:
         if conn:
             conn.close()
@@ -317,7 +304,7 @@ def register():
                 flash('Username already exists.', 'error')
                 conn.close()
                 return redirect(url_for('register'))
-
+            
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             cur.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, hashed_password))
             conn.commit()
@@ -363,3 +350,4 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
+# --- End of app.py content ---
