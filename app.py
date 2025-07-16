@@ -1,9 +1,9 @@
-# --- Start of app.py content ---
 import sqlite3
 import click
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_mail import Mail, Message
 import bcrypt
 
 DATABASE = 'contacts.db'
@@ -11,7 +11,36 @@ DATABASE = 'contacts.db'
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Replace with a real secret key
 
+# Flask-Mail configuration for local debug server
+app.config['MAIL_SERVER'] = 'localhost'
+app.config['MAIL_PORT'] = 1025
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_DEFAULT_SENDER'] = 'noreply@exploritycan.com'
+
+mail = Mail(app)
 login_manager = LoginManager()
+
+def send_email(to, subject, template, **kwargs):
+    """
+    Sends an email using Flask-Mail.
+    NOTE: For a production app, this should be made asynchronous
+          (e.g., using a background worker with Celery or RQ)
+          to avoid blocking the request.
+    """
+    msg = Message(
+        subject,
+        recipients=[to],
+        sender=app.config['MAIL_DEFAULT_SENDER']
+    )
+    msg.body = render_template(template + '.txt', **kwargs)
+    # msg.html = render_template(template + '.html', **kwargs) # Optional: for HTML emails
+    try:
+        mail.send(msg)
+    except Exception as e:
+        # Log the error in a real application
+        print(f"Error sending email: {e}")
+
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
@@ -68,6 +97,7 @@ def init_db(commit_changes=True):
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user'
             );
@@ -99,7 +129,7 @@ def promote_user_command(username):
         if user['role'] == 'admin':
             click.echo(f"User {username} is already an admin.")
             return
-        
+
         cur.execute("UPDATE users SET role = 'admin' WHERE id = ?", (user['id'],))
         conn.commit()
         click.echo(f"User {username} has been promoted to admin.")
@@ -132,10 +162,10 @@ def promote_users():
         cur = conn.cursor()
         placeholders = ', '.join('?' for _ in user_ids_to_promote)
         query = f"UPDATE users SET role = 'admin' WHERE id IN ({placeholders})"
-        
+
         cur.execute(query, user_ids_to_promote)
         conn.commit()
-        
+
         flash(f"Successfully promoted {len(user_ids_to_promote)} user(s).", "success")
     except sqlite3.Error as e:
         print(f"Database error during promotion: {e}")
@@ -143,7 +173,7 @@ def promote_users():
     finally:
         if conn:
             conn.close()
-            
+
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/')
@@ -155,13 +185,27 @@ def index():
         cur = conn.cursor()
         if current_user.role == 'admin':
             sql_query = "SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts ORDER BY name"
+            print(f"DEBUG APP.PY (Admin): Executing query: {sql_query}") # DEBUG
             cur.execute(sql_query)
         else: # Regular user
             sql_query = "SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts WHERE user_id = ? ORDER BY name"
+            print(f"DEBUG APP.PY (User): Executing query: {sql_query} with user_id: {current_user.id}") # DEBUG
             cur.execute(sql_query, (current_user.id,))
         contacts_data = cur.fetchall()
+
+        # ---- START DEBUG PRINT IN APP.PY ----
+        if contacts_data:
+            first_contact_dict = dict(contacts_data[0])
+            print(f"DEBUG APP.PY: First contact raw data from fetchall: {first_contact_dict}")
+            print(f"DEBUG APP.PY: Keys in first contact: {list(first_contact_dict.keys())}")
+        else:
+            print("DEBUG APP.PY: No contacts found in database by index route for current user/admin.")
+        # ---- END DEBUG PRINT IN APP.PY ----
+
     except sqlite3.Error as e:
         print(f"Database error in index route: {e}")
+    except IndexError:
+        print("DEBUG APP.PY: contacts_data is empty, cannot access contacts_data[0].") # Handle empty list
     finally:
         if conn:
             conn.close()
@@ -289,6 +333,7 @@ def register():
         return redirect(url_for('index'))
     if request.method == 'POST':
         username = request.form['username']
+        email = request.form['email']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
 
@@ -299,16 +344,25 @@ def register():
         conn = get_db_connection()
         try:
             cur = conn.cursor()
-            cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+            cur.execute("SELECT id FROM users WHERE username = ?", (username,))
             if cur.fetchone():
                 flash('Username already exists.', 'error')
                 conn.close()
                 return redirect(url_for('register'))
-            
+
+            cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+            if cur.fetchone():
+                flash('Email address already registered.', 'error')
+                conn.close()
+                return redirect(url_for('register'))
+
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-            cur.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, hashed_password))
+            cur.execute("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)", (username, email, hashed_password))
             conn.commit()
-            flash('Registration successful! Please login.', 'success')
+
+            send_email(email, 'Welcome to ExplorityCan!', 'email/welcome', username=username)
+
+            flash('Registration successful! Please check your email and login.', 'success')
             return redirect(url_for('login'))
         except sqlite3.Error as e:
             flash(f"Database error: {e}", 'error')
@@ -350,4 +404,3 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
-# --- End of app.py content ---
