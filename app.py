@@ -24,9 +24,7 @@ login_manager = LoginManager()
 def send_email(to, subject, template, **kwargs):
     """
     Sends an email using Flask-Mail.
-    NOTE: For a production app, this should be made asynchronous
-          (e.g., using a background worker with Celery or RQ)
-          to avoid blocking the request.
+    NOTE: For a production app, this should be made asynchronous.
     """
     msg = Message(
         subject,
@@ -34,11 +32,9 @@ def send_email(to, subject, template, **kwargs):
         sender=app.config['MAIL_DEFAULT_SENDER']
     )
     msg.body = render_template(template + '.txt', **kwargs)
-    # msg.html = render_template(template + '.html', **kwargs) # Optional: for HTML emails
     try:
         mail.send(msg)
     except Exception as e:
-        # Log the error in a real application
         print(f"Error sending email: {e}")
 
 login_manager.init_app(app)
@@ -185,27 +181,13 @@ def index():
         cur = conn.cursor()
         if current_user.role == 'admin':
             sql_query = "SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts ORDER BY name"
-            print(f"DEBUG APP.PY (Admin): Executing query: {sql_query}") # DEBUG
             cur.execute(sql_query)
         else: # Regular user
             sql_query = "SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts WHERE user_id = ? ORDER BY name"
-            print(f"DEBUG APP.PY (User): Executing query: {sql_query} with user_id: {current_user.id}") # DEBUG
             cur.execute(sql_query, (current_user.id,))
         contacts_data = cur.fetchall()
-
-        # ---- START DEBUG PRINT IN APP.PY ----
-        if contacts_data:
-            first_contact_dict = dict(contacts_data[0])
-            print(f"DEBUG APP.PY: First contact raw data from fetchall: {first_contact_dict}")
-            print(f"DEBUG APP.PY: Keys in first contact: {list(first_contact_dict.keys())}")
-        else:
-            print("DEBUG APP.PY: No contacts found in database by index route for current user/admin.")
-        # ---- END DEBUG PRINT IN APP.PY ----
-
     except sqlite3.Error as e:
         print(f"Database error in index route: {e}")
-    except IndexError:
-        print("DEBUG APP.PY: contacts_data is empty, cannot access contacts_data[0].") # Handle empty list
     finally:
         if conn:
             conn.close()
