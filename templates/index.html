@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Manager</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<div class="container">
+{% extends "base.html" %}
+
+{% block title %}Contact Manager - Home{% endblock %}
+
+{% block content %}
     <h1>Contact Manager</h1>
 
     <form action="/add_contact" method="POST">
@@ -63,7 +58,5 @@
     {% else %}
     <p>No contacts yet.</p>
     {% endif %}
-</div>
-</body>
-</html>
+{% endblock %}
 
