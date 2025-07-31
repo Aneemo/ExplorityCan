@@ -1,0 +1,3 @@
+Flask-Login
+bcrypt
+Flask-Mail

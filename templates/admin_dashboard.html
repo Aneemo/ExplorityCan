@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - User Management{% endblock %}
+
+{% block content %}
+    <h1>User Management</h1>
+    <p>Select users to promote to the 'Admin' role.</p>
+
+    <form action="{{ url_for('promote_users') }}" method="POST">
+        <div class="user-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Promote?</th>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Current Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            {% if user['role'] != 'admin' %}
+                                <input type="checkbox" name="user_ids" value="{{ user['id'] }}">
+                            {% endif %}
+                        </td>
+                        <td>{{ user['id'] }}</td>
+                        <td>{{ user['username'] }}</td>
+                        <td>{{ user['role']|capitalize }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <br>
+        <button type="submit">Promote Selected Users</button>
+    </form>
+{% endblock %}
