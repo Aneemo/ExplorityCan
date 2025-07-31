@@ -72,9 +72,8 @@ class User(UserMixin):
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         conn.close()
-        # Instead of returning the raw row, return a User object
         if user:
-            return User(id=user['id'], username=user['username'], password_hash=user['password_hash'], role=user['role'])
+            return User(id=user['id'], username=user['username'], email=user['email'], password_hash=user['password_hash'], role=user['role'])
         return None
 
 @login_manager.user_loader
