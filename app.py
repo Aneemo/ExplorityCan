@@ -4,6 +4,7 @@ from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer as Serializer
 import bcrypt
 
 DATABASE = 'contacts.db'
@@ -55,6 +56,25 @@ class User(UserMixin):
         self.username = username
         self.password_hash = password_hash
         self.role = role
+
+    def get_reset_token(self, expires_sec=1800):
+        s = Serializer(app.config['SECRET_KEY'])
+        return s.dumps({'user_id': self.id})
+
+    @staticmethod
+    def verify_reset_token(token, expires_sec=1800):
+        s = Serializer(app.config['SECRET_KEY'])
+        try:
+            user_id = s.loads(token, max_age=expires_sec)['user_id']
+        except Exception:
+            return None
+        conn = get_db_connection()
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        conn.close()
+        # Instead of returning the raw row, return a User object
+        if user:
+            return User(id=user['id'], username=user['username'], password_hash=user['password_hash'], role=user['role'])
+        return None
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -383,6 +403,59 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
+
+@app.route("/reset_password_request", methods=['GET', 'POST'])
+def reset_password_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        email = request.form['email']
+        conn = get_db_connection()
+        user_data = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+        conn.close()
+        if user_data:
+            user = User(id=user_data['id'], username=user_data['username'], password_hash=user_data['password_hash'], role=user_data['role'])
+            token = user.get_reset_token()
+            send_email(user.email, 'Password Reset Request',
+                       'email/reset_password',
+                       user=user, token=token)
+        # We flash the message regardless of whether the user was found
+        # This is a security measure to prevent email enumeration.
+        flash('If an account with that email exists, a password reset link has been sent.', 'info')
+        return redirect(url_for('login'))
+    return render_template('reset_password_request.html')
+
+@app.route("/reset_password/<token>", methods=['GET', 'POST'])
+def reset_token(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    user = User.verify_reset_token(token)
+    if user is None:
+        flash('That is an invalid or expired token.', 'warning')
+        return redirect(url_for('reset_password_request'))
+    if request.method == 'POST':
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            # It's better to stay on the same page to allow user to correct mistake
+            return render_template('reset_token.html')
+
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        conn = get_db_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hashed_password, user.id))
+            conn.commit()
+            flash('Your password has been updated! You are now able to log in.', 'success')
+            return redirect(url_for('login'))
+        except sqlite3.Error as e:
+            flash(f"Database error: {e}", 'error')
+            return redirect(url_for('reset_password_request'))
+        finally:
+            if conn:
+                conn.close()
+    return render_template('reset_token.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
