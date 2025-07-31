@@ -51,9 +51,10 @@ def admin_required(f):
     return decorated_function
 
 class User(UserMixin):
-    def __init__(self, id, username, password_hash, role):
+    def __init__(self, id, username, email, password_hash, role):
         self.id = id
         self.username = username
+        self.email = email
         self.password_hash = password_hash
         self.role = role
 
@@ -80,11 +81,11 @@ class User(UserMixin):
 def load_user(user_id):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, username, password_hash, role FROM users WHERE id = ?", (user_id,))
+    cur.execute("SELECT id, username, email, password_hash, role FROM users WHERE id = ?", (user_id,))
     user_data = cur.fetchone()
     conn.close()
     if user_data:
-        return User(id=user_data['id'], username=user_data['username'], password_hash=user_data['password_hash'], role=user_data['role'])
+        return User(id=user_data['id'], username=user_data['username'], email=user_data['email'], password_hash=user_data['password_hash'], role=user_data['role'])
     return None
 
 def get_db_connection():
@@ -383,11 +384,11 @@ def login():
         password = request.form['password']
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id, username, password_hash, role FROM users WHERE username = ?", (username,))
+        cur.execute("SELECT id, username, email, password_hash, role FROM users WHERE username = ?", (username,))
         user_data = cur.fetchone()
         conn.close()
         if user_data and bcrypt.checkpw(password.encode('utf-8'), user_data['password_hash']):
-            user_obj = User(id=user_data['id'], username=user_data['username'], password_hash=user_data['password_hash'], role=user_data['role'])
+            user_obj = User(id=user_data['id'], username=user_data['username'], email=user_data['email'], password_hash=user_data['password_hash'], role=user_data['role'])
             login_user(user_obj)
             flash('Logged in successfully!', 'success')
             next_page = request.args.get('next')
@@ -414,7 +415,7 @@ def reset_password_request():
         user_data = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
         conn.close()
         if user_data:
-            user = User(id=user_data['id'], username=user_data['username'], password_hash=user_data['password_hash'], role=user_data['role'])
+            user = User(id=user_data['id'], username=user_data['username'], email=user_data['email'], password_hash=user_data['password_hash'], role=user_data['role'])
             token = user.get_reset_token()
             send_email(user.email, 'Password Reset Request',
                        'email/reset_password',
