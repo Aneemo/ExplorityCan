@@ -110,3 +110,94 @@ a:hover {
     background-color: #ec971f;
     text-decoration: none;
 }
+
+/* Navigation Bar */
+nav {
+    background-color: #333;
+    padding: 10px 0;
+    margin-bottom: 20px; /* Add some space below the nav */
+}
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 80%; /* Match the main content container width */
+    margin: 0 auto; /* Center the nav content */
+}
+.app-title {
+    color: #fff;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+.nav-links a.button-link, .nav-links span {
+    color: #fff;
+    margin-left: 15px;
+    text-decoration: none;
+}
+.nav-links a.button-link {
+    padding: 8px 12px;
+    background-color: #555; /* Darker background for nav buttons */
+    border-radius: 4px;
+}
+.nav-links a.button-link:hover {
+    background-color: #777;
+}
+.nav-links span {
+    padding: 8px 0; /* Align text vertically with buttons */
+}
+
+
+/* Flash Messages */
+.flashes {
+    list-style-type: none;
+    padding: 0;
+    margin-bottom: 15px;
+}
+.alert {
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+.alert-success { /* For category 'success' */
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+.alert-error { /* For category 'error' */
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+.alert-warning { /* Example for 'warning' if used */
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+}
+.alert-info { /* Example for 'info' if used */
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+/* Adjust main container margin to account for nav bar */
+body {
+    font-family: sans-serif;
+    /* margin: 20px; Removed to allow nav to span full width before container constraints */
+    margin: 0; /* Reset body margin */
+    padding-top: 0; /* Nav will handle its own spacing */
+    background-color: #f4f4f4;
+    color: #333;
+}
+.content-container { /* New class for content below nav */
+    width: 80%;
+    margin: 20px auto; /* Keep original content margins */
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+/* Remove margin from original .container if it's no longer the outermost wrapper for all content */
+/* Since base.html introduces nav outside .container, we use .content-container now for the main block */
+/* If .container is still used INSIDE content blocks, its original styling is fine. */
+/* For now, assuming .container in HTML is replaced by .content-container in base.html for the main page block */

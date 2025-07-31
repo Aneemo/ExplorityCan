@@ -1,0 +1,8 @@
+Hi {{ username }},
+
+Welcome to ExplorityCan Contact Manager!
+
+We're glad to have you on board. You can now start managing your contacts.
+
+Thanks,
+The ExplorityCan Team
