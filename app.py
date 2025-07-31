@@ -146,7 +146,7 @@ def promote_user_command(username):
         if user['role'] == 'admin':
             click.echo(f"User {username} is already an admin.")
             return
-
+        
         cur.execute("UPDATE users SET role = 'admin' WHERE id = ?", (user['id'],))
         conn.commit()
         click.echo(f"User {username} has been promoted to admin.")
@@ -179,10 +179,10 @@ def promote_users():
         cur = conn.cursor()
         placeholders = ', '.join('?' for _ in user_ids_to_promote)
         query = f"UPDATE users SET role = 'admin' WHERE id IN ({placeholders})"
-
+        
         cur.execute(query, user_ids_to_promote)
         conn.commit()
-
+        
         flash(f"Successfully promoted {len(user_ids_to_promote)} user(s).", "success")
     except sqlite3.Error as e:
         print(f"Database error during promotion: {e}")
@@ -190,7 +190,7 @@ def promote_users():
     finally:
         if conn:
             conn.close()
-
+            
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/')
@@ -358,13 +358,13 @@ def register():
                 flash('Email address already registered.', 'error')
                 conn.close()
                 return redirect(url_for('register'))
-
+            
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             cur.execute("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)", (username, email, hashed_password))
             conn.commit()
-
+            
             send_email(email, 'Welcome to ExplorityCan!', 'email/welcome', username=username)
-
+            
             flash('Registration successful! Please check your email and login.', 'success')
             return redirect(url_for('login'))
         except sqlite3.Error as e:
