@@ -1,11 +1,13 @@
 import sqlite3
 import click
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer as Serializer
 import bcrypt
+import datetime
+import secrets
 
 DATABASE = 'contacts.db'
 
@@ -115,7 +117,9 @@ def init_db(commit_changes=True):
                 username TEXT UNIQUE NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'user'
+                role TEXT NOT NULL DEFAULT 'user',
+                mfa_code TEXT,
+                mfa_code_expires_at DATETIME
             );
         ''')
         if commit_changes:
@@ -383,19 +387,68 @@ def login():
         password = request.form['password']
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id, username, email, password_hash, role FROM users WHERE username = ?", (username,))
+        cur.execute("SELECT * FROM users WHERE username = ?", (username,))
         user_data = cur.fetchone()
-        conn.close()
+        
         if user_data and bcrypt.checkpw(password.encode('utf-8'), user_data['password_hash']):
-            user_obj = User(id=user_data['id'], username=user_data['username'], email=user_data['email'], password_hash=user_data['password_hash'], role=user_data['role'])
-            login_user(user_obj)
-            flash('Logged in successfully!', 'success')
-            next_page = request.args.get('next')
-            return redirect(next_page or url_for('index'))
+            # Credentials are correct, now handle MFA
+            mfa_code = secrets.token_hex(3).upper()
+            expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
+            
+            cur.execute("UPDATE users SET mfa_code = ?, mfa_code_expires_at = ? WHERE id = ?",
+                        (mfa_code, expires_at, user_data['id']))
+            conn.commit()
+            conn.close()
+
+            # Send the MFA code via email
+            send_email(user_data['email'], 'Your Login Code', 'email/mfa_code', code=mfa_code)
+            
+            # Store user_id in session to know who is verifying
+            session['mfa_user_id'] = user_data['id']
+            
+            flash('Login successful, please check your email for your authentication code.', 'info')
+            return redirect(url_for('login_mfa'))
         else:
+            conn.close()
             flash('Invalid username or password.', 'error')
             return redirect(url_for('login'))
     return render_template('login.html')
+
+@app.route('/login/mfa', methods=['GET', 'POST'])
+def login_mfa():
+    if 'mfa_user_id' not in session:
+        flash("Please log in first.", "warning")
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        user_id = session['mfa_user_id']
+        conn = get_db_connection()
+        user_data = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        
+        submitted_code = request.form.get('mfa_code').upper()
+        
+        if (user_data and user_data['mfa_code'] == submitted_code and
+            datetime.datetime.now() <= datetime.datetime.strptime(user_data['mfa_code_expires_at'], '%Y-%m-%d %H:%M:%S.%f')):
+            
+            # MFA code is correct and not expired
+            user = User(id=user_data['id'], username=user_data['username'], email=user_data['email'], password_hash=user_data['password_hash'], role=user_data['role'])
+            login_user(user)
+            
+            # Clear MFA data from DB and session
+            conn.execute("UPDATE users SET mfa_code = NULL, mfa_code_expires_at = NULL WHERE id = ?", (user_id,))
+            conn.commit()
+            session.pop('mfa_user_id', None)
+            
+            flash('Logged in successfully!', 'success')
+            next_page = request.args.get('next')
+            conn.close()
+            return redirect(next_page or url_for('index'))
+        else:
+            conn.close()
+            flash('Invalid or expired authentication code.', 'error')
+            return redirect(url_for('login_mfa'))
+            
+    return render_template('login_mfa.html')
 
 @app.route('/logout')
 @login_required
