@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 
+{% extends "base.html" %}
+
 {% block title %}Edit Contact{% endblock %}
 
 {% block content %}
     <h1>Edit Contact</h1>
 
     {% if contact %}
-    <form action="{{ url_for('update_contact', contact_id=contact['id']) }}" method="POST">
+    <form action="{{ url_for('update_contact', contact_id=contact['id']) }}" method="POST" enctype="multipart/form-data">
         <label for="name">Name:</label>
         <input type="text" id="name" name="name" value="{{ contact['name'] }}" required><br><br>
 
@@ -17,13 +19,31 @@
         <input type="tel" id="phone" name="phone" value="{{ contact['phone'] }}"><br><br>
 
         <label for="passport_number">Passport Number:</label>
-        <input type="text" id="passport_number" name="passport_number" value="{{ contact['passport_number'] }}"><br><br>
+        <input type="text" id="passport_number" name="passport_number" value="{{ contact['passport_number'] }}">
+        <label for="passport_file">Upload New Passport:</label>
+        <input type="file" id="passport_file" name="passport_file"><br>
+        {% if contact.passport_filename %}
+            <p>Current file: <a href="{{ url_for('download_file', filename=contact.passport_filename) }}">{{ contact.passport_filename }}</a></p>
+        {% endif %}
+        <br>
 
         <label for="drivers_license_number">Driver's License Number:</label>
-        <input type="text" id="drivers_license_number" name="drivers_license_number" value="{{ contact['drivers_license_number'] }}"><br><br>
+        <input type="text" id="drivers_license_number" name="drivers_license_number" value="{{ contact['drivers_license_number'] }}">
+        <label for="drivers_license_file">Upload New Driver's License:</label>
+        <input type="file" id="drivers_license_file" name="drivers_license_file"><br>
+        {% if contact.drivers_license_filename %}
+            <p>Current file: <a href="{{ url_for('download_file', filename=contact.drivers_license_filename) }}">{{ contact.drivers_license_filename }}</a></p>
+        {% endif %}
+        <br>
 
         <label for="medicare_number">Medicare Number:</label>
-        <input type="text" id="medicare_number" name="medicare_number" value="{{ contact['medicare_number'] }}"><br><br>
+        <input type="text" id="medicare_number" name="medicare_number" value="{{ contact['medicare_number'] }}">
+        <label for="medicare_file">Upload New Medicare Card:</label>
+        <input type="file" id="medicare_file" name="medicare_file"><br>
+        {% if contact.medicare_filename %}
+            <p>Current file: <a href="{{ url_for('download_file', filename=contact.medicare_filename) }}">{{ contact.medicare_filename }}</a></p>
+        {% endif %}
+        <br>
 
         <button type="submit">Update Contact</button>
         <a href="{{ url_for('index') }}" class="button-link" style="background-color: #aaa; margin-left: 10px;">Cancel</a>
@@ -33,4 +53,3 @@
     <a href="{{ url_for('index') }}" class="button-link">Back to Home</a>
     {% endif %}
 {% endblock %}
-

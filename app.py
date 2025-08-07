@@ -1,7 +1,7 @@
 import sqlite3
 import click
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer as Serializer
@@ -10,11 +10,14 @@ import datetime
 import secrets
 import io
 import csv
+import os
+from werkzeug.utils import secure_filename
 
 DATABASE = 'contacts.db'
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Replace with a real secret key
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Flask-Mail configuration for local debug server
 app.config['MAIL_SERVER'] = 'localhost'
@@ -41,6 +44,18 @@ def send_email(to, subject, template, **kwargs):
         mail.send(msg)
     except Exception as e:
         print(f"Error sending email: {e}")
+
+def save_file(file_storage):
+    """Saves a file with a secure, unique filename and returns the filename."""
+    if not file_storage or file_storage.filename == '':
+        return None
+    
+    filename = secure_filename(file_storage.filename)
+    # Add a timestamp to make the filename unique
+    unique_filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    file_storage.save(file_path)
+    return unique_filename
 
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -109,6 +124,9 @@ def init_db(commit_changes=True):
                 passport_number TEXT,
                 drivers_license_number TEXT,
                 medicare_number TEXT,
+                passport_filename TEXT,
+                drivers_license_filename TEXT,
+                medicare_filename TEXT,
                 user_id INTEGER,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
@@ -258,13 +276,23 @@ def add_contact():
     drivers_license_number = request.form.get('drivers_license_number')
     medicare_number = request.form.get('medicare_number')
 
+    passport_file = request.files.get('passport_file')
+    drivers_license_file = request.files.get('drivers_license_file')
+    medicare_file = request.files.get('medicare_file')
+
+    passport_filename = save_file(passport_file)
+    drivers_license_filename = save_file(drivers_license_file)
+    medicare_filename = save_file(medicare_file)
+
     conn = get_db_connection()
     try:
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO contacts (name, email, phone, passport_number, drivers_license_number, medicare_number, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (name, email, phone, passport_number, drivers_license_number, medicare_number, current_user.id))
+            INSERT INTO contacts (name, email, phone, passport_number, drivers_license_number, medicare_number, user_id,
+                                  passport_filename, drivers_license_filename, medicare_filename)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, email, phone, passport_number, drivers_license_number, medicare_number, current_user.id,
+              passport_filename, drivers_license_filename, medicare_filename))
         conn.commit()
     except sqlite3.Error as e:
         print(f"Database error: {e}")
@@ -309,23 +337,40 @@ def update_contact(contact_id):
     conn = get_db_connection()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT user_id FROM contacts WHERE id = ?", (contact_id,))
-        contact_to_update = cur.fetchone()
+        # Fetch the existing contact to check for authorization and old filenames
+        cur.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,))
+        contact = cur.fetchone()
 
-        if not contact_to_update:
+        if not contact:
             flash("Contact not found.", "error")
             return redirect(url_for('index'))
 
-        if current_user.role == 'user' and contact_to_update['user_id'] != current_user.id:
+        if current_user.role == 'user' and contact['user_id'] != current_user.id:
             flash("You are not authorized to update this contact.", "error")
             return redirect(url_for('index'))
+            
+        # Handle file uploads
+        passport_filename = contact['passport_filename']
+        if 'passport_file' in request.files and request.files['passport_file'].filename != '':
+            # Optional: Add logic here to delete the old file (contact['passport_filename']) from the uploads folder
+            passport_filename = save_file(request.files['passport_file'])
+
+        drivers_license_filename = contact['drivers_license_filename']
+        if 'drivers_license_file' in request.files and request.files['drivers_license_file'].filename != '':
+            drivers_license_filename = save_file(request.files['drivers_license_file'])
+            
+        medicare_filename = contact['medicare_filename']
+        if 'medicare_file' in request.files and request.files['medicare_file'].filename != '':
+            medicare_filename = save_file(request.files['medicare_file'])
 
         cur.execute("""
             UPDATE contacts 
             SET name = ?, email = ?, phone = ?, 
-                passport_number = ?, drivers_license_number = ?, medicare_number = ? 
+                passport_number = ?, drivers_license_number = ?, medicare_number = ?,
+                passport_filename = ?, drivers_license_filename = ?, medicare_filename = ?
             WHERE id = ?
-        """, (name, email, phone, passport_number, drivers_license_number, medicare_number, contact_id))
+        """, (name, email, phone, passport_number, drivers_license_number, medicare_number,
+              passport_filename, drivers_license_filename, medicare_filename, contact_id))
         conn.commit()
         flash("Contact updated successfully.", "success")
     except sqlite3.Error as e:
@@ -539,6 +584,26 @@ def reset_token(token):
             if conn:
                 conn.close()
     return render_template('reset_token.html')
+
+@app.route('/uploads/<path:filename>')
+@login_required
+def download_file(filename):
+    conn = get_db_connection()
+    # Find the contact this file belongs to
+    contact = conn.execute(
+        'SELECT * FROM contacts WHERE passport_filename = ? OR drivers_license_filename = ? OR medicare_filename = ?',
+        (filename, filename, filename)
+    ).fetchone()
+    conn.close()
+
+    if not contact:
+        return "File not found.", 404
+
+    # Authorization check
+    if current_user.role != 'admin' and contact['user_id'] != current_user.id:
+        return "You are not authorized to access this file.", 403
+
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)
