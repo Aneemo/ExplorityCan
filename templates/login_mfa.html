@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Two-Factor Authentication{% endblock %}
+
+{% block content %}
+    <h1>Enter Authentication Code</h1>
+    <p>Please check your email for the 6-character code we've sent you.</p>
+    <form method="POST" action="{{ url_for('login_mfa') }}">
+        <label for="mfa_code">Authentication Code:</label>
+        <input type="text" id="mfa_code" name="mfa_code" required minlength="6" maxlength="6" autofocus><br><br>
+        <button type="submit">Verify Code</button>
+    </form>
+    <p><a href="{{ url_for('login') }}">Cancel and return to login</a></p>
+{% endblock %}
