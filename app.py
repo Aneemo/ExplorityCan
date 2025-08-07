@@ -1,13 +1,15 @@
 import sqlite3
 import click
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer as Serializer
 import bcrypt
 import datetime
 import secrets
+import io
+import csv
 
 DATABASE = 'contacts.db'
 
@@ -167,6 +169,34 @@ def admin_dashboard():
     users = conn.execute('SELECT id, username, role FROM users ORDER BY username').fetchall()
     conn.close()
     return render_template('admin_dashboard.html', users=users)
+
+@app.route('/admin/download_user_report')
+@login_required
+@admin_required
+def download_user_report():
+    conn = get_db_connection()
+    users = conn.execute('SELECT id, username, email, role FROM users ORDER BY id').fetchall()
+    conn.close()
+
+    # Use io.StringIO as an in-memory text buffer
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['ID', 'Username', 'Email', 'Role'])
+    
+    # Write data rows
+    for user in users:
+        writer.writerow([user['id'], user['username'], user['email'], user['role']])
+    
+    # Get the content of the buffer
+    output.seek(0)
+    
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=user_report.csv"}
+    )
 
 @app.route('/admin/promote', methods=['POST'])
 @login_required

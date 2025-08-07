@@ -5,7 +5,7 @@
 {% block content %}
     <h1>User Management</h1>
     <p>Select users to promote to the 'Admin' role.</p>
-
+    
     <form action="{{ url_for('promote_users') }}" method="POST">
         <div class="user-list">
             <table>
@@ -35,5 +35,6 @@
         </div>
         <br>
         <button type="submit">Promote Selected Users</button>
+        <a href="{{ url_for('download_user_report') }}" class="button-link" style="background-color: #5bc0de; margin-left: 10px;">Download User Report (CSV)</a>
     </form>
 {% endblock %}
