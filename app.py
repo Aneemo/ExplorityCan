@@ -149,7 +149,7 @@ def promote_user_command(username):
         if user['role'] == 'admin':
             click.echo(f"User {username} is already an admin.")
             return
-
+        
         cur.execute("UPDATE users SET role = 'admin' WHERE id = ?", (user['id'],))
         conn.commit()
         click.echo(f"User {username} has been promoted to admin.")
@@ -182,10 +182,10 @@ def promote_users():
         cur = conn.cursor()
         placeholders = ', '.join('?' for _ in user_ids_to_promote)
         query = f"UPDATE users SET role = 'admin' WHERE id IN ({placeholders})"
-
+        
         cur.execute(query, user_ids_to_promote)
         conn.commit()
-
+        
         flash(f"Successfully promoted {len(user_ids_to_promote)} user(s).", "success")
     except sqlite3.Error as e:
         print(f"Database error during promotion: {e}")
@@ -193,7 +193,7 @@ def promote_users():
     finally:
         if conn:
             conn.close()
-
+            
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/')
@@ -361,13 +361,13 @@ def register():
                 flash('Email address already registered.', 'error')
                 conn.close()
                 return redirect(url_for('register'))
-
+            
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             cur.execute("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)", (username, email, hashed_password))
             conn.commit()
-
+            
             send_email(email, 'Welcome to ExplorityCan!', 'email/welcome', username=username)
-
+            
             flash('Registration successful! Please check your email and login.', 'success')
             return redirect(url_for('login'))
         except sqlite3.Error as e:
@@ -389,12 +389,12 @@ def login():
         cur = conn.cursor()
         cur.execute("SELECT * FROM users WHERE username = ?", (username,))
         user_data = cur.fetchone()
-
+        
         if user_data and bcrypt.checkpw(password.encode('utf-8'), user_data['password_hash']):
             # Credentials are correct, now handle MFA
             mfa_code = secrets.token_hex(3).upper()
             expires_at = datetime.datetime.now() + datetime.timedelta(minutes=10)
-
+            
             cur.execute("UPDATE users SET mfa_code = ?, mfa_code_expires_at = ? WHERE id = ?",
                         (mfa_code, expires_at, user_data['id']))
             conn.commit()
@@ -402,10 +402,10 @@ def login():
 
             # Send the MFA code via email
             send_email(user_data['email'], 'Your Login Code', 'email/mfa_code', code=mfa_code)
-
+            
             # Store user_id in session to know who is verifying
             session['mfa_user_id'] = user_data['id']
-
+            
             flash('Login successful, please check your email for your authentication code.', 'info')
             return redirect(url_for('login_mfa'))
         else:
@@ -419,26 +419,26 @@ def login_mfa():
     if 'mfa_user_id' not in session:
         flash("Please log in first.", "warning")
         return redirect(url_for('login'))
-
+    
     if request.method == 'POST':
         user_id = session['mfa_user_id']
         conn = get_db_connection()
         user_data = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-
+        
         submitted_code = request.form.get('mfa_code').upper()
-
+        
         if (user_data and user_data['mfa_code'] == submitted_code and
             datetime.datetime.now() <= datetime.datetime.strptime(user_data['mfa_code_expires_at'], '%Y-%m-%d %H:%M:%S.%f')):
-
+            
             # MFA code is correct and not expired
             user = User(id=user_data['id'], username=user_data['username'], email=user_data['email'], password_hash=user_data['password_hash'], role=user_data['role'])
             login_user(user)
-
+            
             # Clear MFA data from DB and session
             conn.execute("UPDATE users SET mfa_code = NULL, mfa_code_expires_at = NULL WHERE id = ?", (user_id,))
             conn.commit()
             session.pop('mfa_user_id', None)
-
+            
             flash('Logged in successfully!', 'success')
             next_page = request.args.get('next')
             conn.close()
@@ -447,7 +447,7 @@ def login_mfa():
             conn.close()
             flash('Invalid or expired authentication code.', 'error')
             return redirect(url_for('login_mfa'))
-
+            
     return render_template('login_mfa.html')
 
 @app.route('/logout')
