@@ -308,7 +308,7 @@ def edit_contact(contact_id):
     contact = None
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts WHERE id = ?", (contact_id,))
+        cur.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,))
         contact = cur.fetchone()
     except sqlite3.Error as e:
         print(f"Database error: {e}")
