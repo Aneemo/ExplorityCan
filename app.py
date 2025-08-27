@@ -252,10 +252,10 @@ def index():
     try:
         cur = conn.cursor()
         if current_user.role == 'admin':
-            sql_query = "SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts ORDER BY name"
+            sql_query = "SELECT * FROM contacts ORDER BY name"
             cur.execute(sql_query)
         else: # Regular user
-            sql_query = "SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts WHERE user_id = ? ORDER BY name"
+            sql_query = "SELECT * FROM contacts WHERE user_id = ? ORDER BY name"
             cur.execute(sql_query, (current_user.id,))
         contacts_data = cur.fetchall()
     except sqlite3.Error as e:
@@ -266,40 +266,46 @@ def index():
     
     return render_template('index.html', contacts=contacts_data)
 
-@app.route('/add_contact', methods=['POST'])
+@app.route('/add_contact', methods=['GET', 'POST'])
 @login_required
 def add_contact():
-    name = request.form['name']
-    email = request.form.get('email')
-    phone = request.form.get('phone')
-    passport_number = request.form.get('passport_number')
-    drivers_license_number = request.form.get('drivers_license_number')
-    medicare_number = request.form.get('medicare_number')
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form.get('email')
+        phone = request.form.get('phone')
+        passport_number = request.form.get('passport_number')
+        drivers_license_number = request.form.get('drivers_license_number')
+        medicare_number = request.form.get('medicare_number')
 
-    passport_file = request.files.get('passport_file')
-    drivers_license_file = request.files.get('drivers_license_file')
-    medicare_file = request.files.get('medicare_file')
+        passport_file = request.files.get('passport_file')
+        drivers_license_file = request.files.get('drivers_license_file')
+        medicare_file = request.files.get('medicare_file')
 
-    passport_filename = save_file(passport_file)
-    drivers_license_filename = save_file(drivers_license_file)
-    medicare_filename = save_file(medicare_file)
+        passport_filename = save_file(passport_file)
+        drivers_license_filename = save_file(drivers_license_file)
+        medicare_filename = save_file(medicare_file)
 
-    conn = get_db_connection()
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO contacts (name, email, phone, passport_number, drivers_license_number, medicare_number, user_id,
-                                  passport_filename, drivers_license_filename, medicare_filename)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (name, email, phone, passport_number, drivers_license_number, medicare_number, current_user.id,
-              passport_filename, drivers_license_filename, medicare_filename))
-        conn.commit()
-    except sqlite3.Error as e:
-        print(f"Database error: {e}")
-    finally:
-        if conn:
-            conn.close()
-    return redirect(url_for('index'))
+        conn = get_db_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO contacts (name, email, phone, passport_number, drivers_license_number, medicare_number, user_id,
+                                      passport_filename, drivers_license_filename, medicare_filename)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (name, email, phone, passport_number, drivers_license_number, medicare_number, current_user.id,
+                  passport_filename, drivers_license_filename, medicare_filename))
+            conn.commit()
+            flash("Contact added successfully.", "success")
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            flash("Failed to add contact due to a database error.", "error")
+        finally:
+            if conn:
+                conn.close()
+        return redirect(url_for('index'))
+
+    # For a GET request, just render the form.
+    return render_template('add_contact.html')
 
 @app.route('/edit/<int:contact_id>', methods=['GET'])
 @login_required
@@ -308,7 +314,7 @@ def edit_contact(contact_id):
     contact = None
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id, name, email, phone, passport_number, drivers_license_number, medicare_number, user_id FROM contacts WHERE id = ?", (contact_id,))
+        cur.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,))
         contact = cur.fetchone()
     except sqlite3.Error as e:
         print(f"Database error: {e}")
