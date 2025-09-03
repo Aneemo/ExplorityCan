@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Help & FAQ{% endblock %}
+
+{% block content %}
+    <h1>Help & FAQ</h1>
+    <p>Welcome to the ExplorityCan Contact Manager! Here are some answers to frequently asked questions about the application's features.</p>
+
+    <h2>Managing Contacts</h2>
+
+    <p><strong>How do I add a new contact?</strong></p>
+    <p>Click the "Add New Contact" button on the main page. This will take you to a form where you can enter the contact's details, including their name, email, and phone number.</p>
+
+    <p><strong>How do I edit or delete a contact?</strong></p>
+    <p>On the main contact list, each contact has an "Edit" and "Delete" button. Clicking "Edit" will take you to a page where you can update their information. Clicking "Delete" will permanently remove the contact after a confirmation.</p>
+
+    <p><strong>How do I upload documents for a contact?</strong></p>
+    <p>When adding or editing a contact, you can use the "Upload" buttons for Passport, Driver's License, and Medicare Card to attach relevant files. Once uploaded, a "Download" link will appear next to the document number in the contact list.</p>
+
+    <h2>User Accounts</h2>
+
+    <p><strong>Why do I need an account?</strong></p>
+    <p>User accounts ensure that your contacts are private and secure. Only you can see and manage the contacts you create.</p>
+
+    <p><strong>What is Multi-Factor Authentication (MFA)?</strong></p>
+    <p>For added security, we use MFA. When you log in, we send a unique, one-time code to your registered email address. You must enter this code to complete the login process. This helps ensure that only you can access your account, even if someone else knows your password.</p>
+
+    <h2>Admin Functions</h2>
+
+    <p><strong>What is an 'Admin'?</strong></p>
+    <p>Admin users have special privileges. They can view all contacts created by all users in the system. They can also promote other users to the admin role from the Admin Dashboard.</p>
+
+    <p><strong>How do I access the Admin Dashboard?</strong></p>
+    <p>If you are an admin, a link to the "Admin Dashboard" will be visible in the navigation bar.</p>
+
+    <br>
+    <a href="{{ url_for('index') }}" class="button-link">Back to Home</a>
+{% endblock %}

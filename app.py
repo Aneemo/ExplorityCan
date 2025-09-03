@@ -611,5 +611,10 @@ def download_file(filename):
 
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
+@app.route('/help')
+def help_page():
+    """Renders the help and FAQ page."""
+    return render_template('help.html')
+
 if __name__ == '__main__':
     app.run(debug=True)
