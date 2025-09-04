@@ -4,10 +4,11 @@
 
 {% block content %}
     <h1>User Management</h1>
-    <p>Select users to promote to the 'Admin' role.</p>
     
-    <form action="{{ url_for('promote_users') }}" method="POST">
-        <div class="user-list">
+    <div class="user-list">
+        <h2>Promote Users</h2>
+        <p>Select users to promote to the 'Admin' role.</p>
+        <form action="{{ url_for('promote_users') }}" method="POST">
             <table>
                 <thead>
                     <tr>
@@ -15,6 +16,8 @@
                         <th>User ID</th>
                         <th>Username</th>
                         <th>Current Role</th>
+                        <th>API Key</th>
+                        <th>API Key Role</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -28,13 +31,51 @@
                         <td>{{ user['id'] }}</td>
                         <td>{{ user['username'] }}</td>
                         <td>{{ user['role']|capitalize }}</td>
+                        <td>
+                            {% if user.key %}
+                                <input type="text" value="{{ user.key }}" readonly style="width: 250px; font-family: monospace;">
+                            {% else %}
+                                <span style="color: #888;">No key assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.api_key_role %}
+                                {{ user.api_key_role|capitalize }}
+                            {% else %}
+                                <span style="color: #888;">N/A</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-        <br>
-        <button type="submit">Promote Selected Users</button>
-        <a href="{{ url_for('download_user_report') }}" class="button-link" style="background-color: #5bc0de; margin-left: 10px;">Download User Report (CSV)</a>
-    </form>
+            <br>
+            <button type="submit">Promote Selected Users</button>
+            <a href="{{ url_for('download_user_report') }}" class="button-link" style="background-color: #5bc0de; margin-left: 10px;">Download User Report (CSV)</a>
+        </form>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
+    <div class="api-key-management">
+        <h2>API Key Management</h2>
+        <p>Generate a new API key for a user. If a user already has a key, generating a new one will replace it.</p>
+        <form action="{{ url_for('generate_api_key') }}" method="POST">
+            <label for="user_id_for_key">Select User:</label>
+            <select name="user_id" id="user_id_for_key" required>
+                <option value="" disabled selected>-- Choose a user --</option>
+                {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.username }} (ID: {{ user.id }})</option>
+                {% endfor %}
+            </select>
+
+            <label for="api_role" style="margin-left: 20px;">Select API Role:</label>
+            <select name="api_role" id="api_role" required>
+                <option value="user" selected>User (Access to own contacts)</option>
+                <option value="admin">Admin (Access to all contacts)</option>
+            </select>
+
+            <button type="submit" style="margin-left: 20px;">Generate API Key</button>
+        </form>
+    </div>
 {% endblock %}
