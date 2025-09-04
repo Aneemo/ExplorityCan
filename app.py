@@ -1,7 +1,7 @@
 import sqlite3
 import click
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, send_from_directory, g, jsonify
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer as Serializer
@@ -66,6 +66,35 @@ def admin_required(f):
         if not current_user.is_authenticated or current_user.role != 'admin':
             flash("You do not have permission to access this page.", "error")
             return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def api_key_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = None
+        if 'Authorization' in request.headers and request.headers['Authorization'].startswith('Bearer '):
+            api_key = request.headers['Authorization'].split(' ')[1]
+
+        if not api_key:
+            return jsonify({'message': 'API key is missing!'}), 401
+
+        conn = get_db_connection()
+        key_data = conn.execute('SELECT * FROM api_keys WHERE key = ?', (api_key,)).fetchone()
+
+        if not key_data:
+            conn.close()
+            return jsonify({'message': 'Invalid API key!'}), 401
+
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (key_data['user_id'],)).fetchone()
+        conn.close()
+
+        if not user:
+             return jsonify({'message': 'User associated with API key not found!'}), 401
+
+        g.current_user = user
+        g.api_role = key_data['role']
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -142,6 +171,16 @@ def init_db(commit_changes=True):
                 mfa_code_expires_at DATETIME
             );
         ''')
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS api_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT UNIQUE NOT NULL,
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            );
+        ''')
         if commit_changes:
             conn.commit()
     finally:
@@ -184,9 +223,23 @@ def promote_user_command(username):
 @admin_required
 def admin_dashboard():
     conn = get_db_connection()
-    users = conn.execute('SELECT id, username, role FROM users ORDER BY username').fetchall()
+    # Join users with api_keys to get all info in one query
+    users_with_keys = conn.execute('''
+        SELECT
+            u.id,
+            u.username,
+            u.role,
+            k.key,
+            k.role as api_key_role
+        FROM
+            users u
+        LEFT JOIN
+            api_keys k ON u.id = k.user_id
+        ORDER BY
+            u.username
+    ''').fetchall()
     conn.close()
-    return render_template('admin_dashboard.html', users=users)
+    return render_template('admin_dashboard.html', users=users_with_keys)
 
 @app.route('/admin/download_user_report')
 @login_required
@@ -242,6 +295,44 @@ def promote_users():
         if conn:
             conn.close()
             
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/generate_api_key', methods=['POST'])
+@login_required
+@admin_required
+def generate_api_key():
+    user_id = request.form.get('user_id')
+    api_role = request.form.get('api_role')
+
+    if not user_id or not api_role:
+        flash("User ID and API role are required.", "error")
+        return redirect(url_for('admin_dashboard'))
+
+    new_key = secrets.token_hex(32)
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        # Check if a key already exists for this user
+        cur.execute("SELECT id FROM api_keys WHERE user_id = ?", (user_id,))
+        existing_key = cur.fetchone()
+
+        if existing_key:
+            # Update existing key
+            cur.execute("UPDATE api_keys SET key = ?, role = ? WHERE user_id = ?", (new_key, api_role, user_id))
+            flash("API key updated successfully.", "success")
+        else:
+            # Insert new key
+            cur.execute("INSERT INTO api_keys (user_id, key, role) VALUES (?, ?, ?)", (user_id, new_key, api_role))
+            flash("API key generated successfully.", "success")
+
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"API Key Generation DB Error: {e}")
+        flash("Failed to generate API key due to a database error.", "error")
+    finally:
+        if conn:
+            conn.close()
+
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/')
@@ -610,6 +701,157 @@ def download_file(filename):
         return "You are not authorized to access this file.", 403
 
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
+# --- API Endpoints ---
+
+def contact_to_dict(contact_row):
+    """Converts a sqlite3.Row object for a contact into a dictionary."""
+    if not contact_row:
+        return None
+    return {
+        'id': contact_row['id'],
+        'name': contact_row['name'],
+        'email': contact_row['email'],
+        'phone': contact_row['phone'],
+        'passport_number': contact_row['passport_number'],
+        'drivers_license_number': contact_row['drivers_license_number'],
+        'medicare_number': contact_row['medicare_number'],
+        'user_id': contact_row['user_id']
+        # Note: filenames are not exposed via API for simplicity
+    }
+
+@app.route('/api/contacts', methods=['GET'])
+@api_key_required
+def get_contacts():
+    """API endpoint to list contacts."""
+    conn = get_db_connection()
+    if g.api_role == 'admin':
+        contacts_rows = conn.execute('SELECT * FROM contacts ORDER BY name').fetchall()
+    else: # 'user' role
+        contacts_rows = conn.execute('SELECT * FROM contacts WHERE user_id = ? ORDER BY name', (g.current_user['id'],)).fetchall()
+    conn.close()
+
+    contacts = [contact_to_dict(row) for row in contacts_rows]
+    return jsonify(contacts)
+
+@app.route('/api/contacts/<int:contact_id>', methods=['GET'])
+@api_key_required
+def get_contact(contact_id):
+    """API endpoint to get a single contact."""
+    conn = get_db_connection()
+    contact_row = conn.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
+    conn.close()
+
+    if not contact_row:
+        return jsonify({'message': 'Contact not found'}), 404
+
+    # Authorization check
+    if g.api_role == 'user' and contact_row['user_id'] != g.current_user['id']:
+        return jsonify({'message': 'Forbidden'}), 403
+
+    return jsonify(contact_to_dict(contact_row))
+
+@app.route('/api/contacts', methods=['POST'])
+@api_key_required
+def create_contact():
+    """API endpoint to create a new contact."""
+    if not request.json or not 'name' in request.json:
+        return jsonify({'message': 'Missing required field: name'}), 400
+
+    data = request.get_json()
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO contacts (name, email, phone, passport_number, drivers_license_number, medicare_number, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            data['name'], data.get('email'), data.get('phone'),
+            data.get('passport_number'), data.get('drivers_license_number'),
+            data.get('medicare_number'), g.current_user['id']
+        ))
+        conn.commit()
+        new_contact_id = cur.lastrowid
+
+        # Fetch the newly created contact to return it
+        new_contact_row = conn.execute('SELECT * FROM contacts WHERE id = ?', (new_contact_id,)).fetchone()
+        conn.close()
+
+        return jsonify(contact_to_dict(new_contact_row)), 201
+    except sqlite3.Error as e:
+        conn.close()
+        return jsonify({'message': f'Database error: {e}'}), 500
+
+@app.route('/api/contacts/<int:contact_id>', methods=['PUT'])
+@api_key_required
+def update_api_contact(contact_id):
+    """API endpoint to update a contact."""
+    conn = get_db_connection()
+    contact_row = conn.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
+
+    if not contact_row:
+        conn.close()
+        return jsonify({'message': 'Contact not found'}), 404
+
+    if g.api_role == 'user' and contact_row['user_id'] != g.current_user['id']:
+        conn.close()
+        return jsonify({'message': 'Forbidden'}), 403
+
+    if not request.json:
+        conn.close()
+        return jsonify({'message': 'Request must be JSON'}), 400
+
+    data = request.get_json()
+
+    # Update fields provided in the request
+    name = data.get('name', contact_row['name'])
+    email = data.get('email', contact_row['email'])
+    phone = data.get('phone', contact_row['phone'])
+    passport_number = data.get('passport_number', contact_row['passport_number'])
+    drivers_license_number = data.get('drivers_license_number', contact_row['drivers_license_number'])
+    medicare_number = data.get('medicare_number', contact_row['medicare_number'])
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE contacts
+            SET name = ?, email = ?, phone = ?, passport_number = ?, drivers_license_number = ?, medicare_number = ?
+            WHERE id = ?
+        """, (name, email, phone, passport_number, drivers_license_number, medicare_number, contact_id))
+        conn.commit()
+
+        updated_contact_row = conn.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
+        conn.close()
+        return jsonify(contact_to_dict(updated_contact_row))
+    except sqlite3.Error as e:
+        conn.close()
+        return jsonify({'message': f'Database error: {e}'}), 500
+
+@app.route('/api/contacts/<int:contact_id>', methods=['DELETE'])
+@api_key_required
+def delete_api_contact(contact_id):
+    """API endpoint to delete a contact."""
+    conn = get_db_connection()
+    contact_row = conn.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
+
+    if not contact_row:
+        conn.close()
+        return jsonify({'message': 'Contact not found'}), 404
+
+    if g.api_role == 'user' and contact_row['user_id'] != g.current_user['id']:
+        conn.close()
+        return jsonify({'message': 'Forbidden'}), 403
+
+    try:
+        conn.execute('DELETE FROM contacts WHERE id = ?', (contact_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Contact deleted successfully'}), 200
+    except sqlite3.Error as e:
+        conn.close()
+        return jsonify({'message': f'Database error: {e}'}), 500
+
 
 @app.route('/help')
 def help_page():
