@@ -5,27 +5,62 @@
 {% block content %}
     <h1>Add New Contact</h1>
 
-    <form action="{{ url_for('add_contact') }}" method="POST" enctype="multipart/form-data">
-        <label for="name">Name:</label><input type="text" id="name" name="name" required><br><br>
-        <label for="email">Email:</label><input type="email" id="email" name="email"><br><br>
-        <label for="phone">Phone:</label><input type="tel" id="phone" name="phone"><br><br>
+    <form action="{{ url_for('add_contact') }}" method="POST" enctype="multipart/form-data" class="contact-form">
+        <fieldset>
+            <legend>Contact Information</legend>
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone:</label>
+                <input type="tel" id="phone" name="phone">
+            </div>
+        </fieldset>
 
-        <label for="passport_number">Passport Number:</label>
-        <input type="text" id="passport_number" name="passport_number">
-        <label for="passport_file">Upload Passport:</label>
-        <input type="file" id="passport_file" name="passport_file"><br><br>
+        <fieldset>
+            <legend>Passport Details</legend>
+            <div class="form-group">
+                <label for="passport_number">Passport Number:</label>
+                <input type="text" id="passport_number" name="passport_number">
+            </div>
+            <div class="form-group">
+                <label for="passport_file">Upload Passport:</label>
+                <input type="file" id="passport_file" name="passport_file">
+            </div>
+        </fieldset>
 
-        <label for="drivers_license_number">Driver's License Number:</label>
-        <input type="text" id="drivers_license_number" name="drivers_license_number">
-        <label for="drivers_license_file">Upload Driver's License:</label>
-        <input type="file" id="drivers_license_file" name="drivers_license_file"><br><br>
+        <fieldset>
+            <legend>Driver's License Details</legend>
+            <div class="form-group">
+                <label for="drivers_license_number">Driver's License Number:</label>
+                <input type="text" id="drivers_license_number" name="drivers_license_number">
+            </div>
+            <div class="form-group">
+                <label for="drivers_license_file">Upload Driver's License:</label>
+                <input type="file" id="drivers_license_file" name="drivers_license_file">
+            </div>
+        </fieldset>
 
-        <label for="medicare_number">Medicare Number:</label>
-        <input type="text" id="medicare_number" name="medicare_number">
-        <label for="medicare_file">Upload Medicare Card:</label>
-        <input type="file" id="medicare_file" name="medicare_file"><br><br>
+        <fieldset>
+            <legend>Medicare Card Details</legend>
+            <div class="form-group">
+                <label for="medicare_number">Medicare Number:</label>
+                <input type="text" id="medicare_number" name="medicare_number">
+            </div>
+            <div class="form-group">
+                <label for="medicare_file">Upload Medicare Card:</label>
+                <input type="file" id="medicare_file" name="medicare_file">
+            </div>
+        </fieldset>
 
-        <button type="submit">Add Contact</button>
-        <a href="{{ url_for('index') }}" class="button-link" style="background-color: #aaa; margin-left: 10px;">Cancel</a>
+        <div class="form-actions">
+            <button type="submit">Add Contact</button>
+            <a href="{{ url_for('index') }}" class="button-link cancel-link">Cancel</a>
+        </div>
     </form>
 {% endblock %}

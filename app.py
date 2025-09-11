@@ -398,6 +398,30 @@ def add_contact():
     # For a GET request, just render the form.
     return render_template('add_contact.html')
 
+@app.route('/view/<int:contact_id>')
+@login_required
+def view_contact(contact_id):
+    conn = get_db_connection()
+    contact = None
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,))
+        contact = cur.fetchone()
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    if contact:
+        if current_user.role == 'user' and contact['user_id'] != current_user.id:
+            flash("You are not authorized to view this contact.", "error")
+            return redirect(url_for('index'))
+        return render_template('view_contact.html', contact=contact)
+    else:
+        flash("Contact not found.", "error")
+        return redirect(url_for('index'))
+
 @app.route('/edit/<int:contact_id>', methods=['GET'])
 @login_required
 def edit_contact(contact_id):
@@ -476,7 +500,7 @@ def update_contact(contact_id):
     finally:
         if conn:
             conn.close()
-    return redirect(url_for('index'))
+    return redirect(url_for('view_contact', contact_id=contact_id))
 
 @app.route('/delete/<int:contact_id>', methods=['POST'])
 @login_required
