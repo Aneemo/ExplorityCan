@@ -711,3 +711,43 @@ def update_api_contact(contact_id):
         conn.commit()
 
         updated_contact_row = conn.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
+        conn.close()
+        return jsonify(contact_to_dict(updated_contact_row))
+    except sqlite3.Error as e:
+        conn.close()
+        return jsonify({'message': f'Database error: {e}'}), 500
+
+@app.route('/api/contacts/<int:contact_id>', methods=['DELETE'])
+@api_key_required
+def delete_api_contact(contact_id):
+    """API endpoint to delete a contact."""
+    conn = get_db_connection()
+    contact_row = conn.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
+
+    if not contact_row:
+        conn.close()
+        return jsonify({'message': 'Contact not found'}), 404
+
+    if g.api_role == 'user' and contact_row['user_id'] != g.current_user['id']:
+        conn.close()
+        return jsonify({'message': 'Forbidden'}), 403
+
+    try:
+        conn.execute('DELETE FROM contacts WHERE id = ?', (contact_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Contact deleted successfully'}), 200
+    except sqlite3.Error as e:
+        conn.close()
+        return jsonify({'message': f'Database error: {e}'}), 500
+
+
+@app.route('/help')
+def help_page():
+    """Renders the help and FAQ page."""
+    return render_template('help.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+# End of file.
