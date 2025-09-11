@@ -144,12 +144,16 @@ def init_db(commit_changes=True):
     conn = get_db_connection()
     try:
         cur = conn.cursor()
+        cur.execute('DROP TABLE IF EXISTS contacts')
+        cur.execute('DROP TABLE IF EXISTS api_keys')
+        cur.execute('DROP TABLE IF EXISTS users')
         cur.execute('''
             CREATE TABLE IF NOT EXISTS contacts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 email TEXT,
                 phone TEXT,
+                interest TEXT,
                 passport_number TEXT,
                 drivers_license_number TEXT,
                 medicare_number TEXT,
@@ -367,6 +371,7 @@ def add_contact():
         passport_number = request.form.get('passport_number')
         drivers_license_number = request.form.get('drivers_license_number')
         medicare_number = request.form.get('medicare_number')
+        interest = request.form.get('interest')
 
         passport_file = request.files.get('passport_file')
         drivers_license_file = request.files.get('drivers_license_file')
@@ -380,10 +385,10 @@ def add_contact():
         try:
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO contacts (name, email, phone, passport_number, drivers_license_number, medicare_number, user_id,
+                INSERT INTO contacts (name, email, phone, interest, passport_number, drivers_license_number, medicare_number, user_id,
                                       passport_filename, drivers_license_filename, medicare_filename)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (name, email, phone, passport_number, drivers_license_number, medicare_number, current_user.id,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (name, email, phone, interest, passport_number, drivers_license_number, medicare_number, current_user.id,
                   passport_filename, drivers_license_filename, medicare_filename))
             conn.commit()
             flash("Contact added successfully.", "success")
@@ -397,6 +402,30 @@ def add_contact():
 
     # For a GET request, just render the form.
     return render_template('add_contact.html')
+
+@app.route('/view/<int:contact_id>')
+@login_required
+def view_contact(contact_id):
+    conn = get_db_connection()
+    contact = None
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,))
+        contact = cur.fetchone()
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    if contact:
+        if current_user.role == 'user' and contact['user_id'] != current_user.id:
+            flash("You are not authorized to view this contact.", "error")
+            return redirect(url_for('index'))
+        return render_template('view_contact.html', contact=contact)
+    else:
+        flash("Contact not found.", "error")
+        return redirect(url_for('index'))
 
 @app.route('/edit/<int:contact_id>', methods=['GET'])
 @login_required
@@ -427,6 +456,7 @@ def update_contact(contact_id):
     name = request.form['name']
     email = request.form.get('email')
     phone = request.form.get('phone')
+    interest = request.form.get('interest')
     passport_number = request.form.get('passport_number')
     drivers_license_number = request.form.get('drivers_license_number')
     medicare_number = request.form.get('medicare_number')
@@ -462,11 +492,11 @@ def update_contact(contact_id):
 
         cur.execute("""
             UPDATE contacts 
-            SET name = ?, email = ?, phone = ?, 
+            SET name = ?, email = ?, phone = ?, interest = ?,
                 passport_number = ?, drivers_license_number = ?, medicare_number = ?,
                 passport_filename = ?, drivers_license_filename = ?, medicare_filename = ?
             WHERE id = ?
-        """, (name, email, phone, passport_number, drivers_license_number, medicare_number,
+        """, (name, email, phone, interest, passport_number, drivers_license_number, medicare_number,
               passport_filename, drivers_license_filename, medicare_filename, contact_id))
         conn.commit()
         flash("Contact updated successfully.", "success")
@@ -476,7 +506,7 @@ def update_contact(contact_id):
     finally:
         if conn:
             conn.close()
-    return redirect(url_for('index'))
+    return redirect(url_for('view_contact', contact_id=contact_id))
 
 @app.route('/delete/<int:contact_id>', methods=['POST'])
 @login_required
@@ -713,6 +743,7 @@ def contact_to_dict(contact_row):
         'name': contact_row['name'],
         'email': contact_row['email'],
         'phone': contact_row['phone'],
+        'interest': contact_row['interest'],
         'passport_number': contact_row['passport_number'],
         'drivers_license_number': contact_row['drivers_license_number'],
         'medicare_number': contact_row['medicare_number'],
@@ -764,10 +795,10 @@ def create_contact():
     try:
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO contacts (name, email, phone, passport_number, drivers_license_number, medicare_number, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO contacts (name, email, phone, interest, passport_number, drivers_license_number, medicare_number, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            data['name'], data.get('email'), data.get('phone'),
+            data['name'], data.get('email'), data.get('phone'), data.get('interest'),
             data.get('passport_number'), data.get('drivers_license_number'),
             data.get('medicare_number'), g.current_user['id']
         ))
@@ -808,6 +839,7 @@ def update_api_contact(contact_id):
     name = data.get('name', contact_row['name'])
     email = data.get('email', contact_row['email'])
     phone = data.get('phone', contact_row['phone'])
+    interest = data.get('interest', contact_row['interest'])
     passport_number = data.get('passport_number', contact_row['passport_number'])
     drivers_license_number = data.get('drivers_license_number', contact_row['drivers_license_number'])
     medicare_number = data.get('medicare_number', contact_row['medicare_number'])
@@ -816,9 +848,9 @@ def update_api_contact(contact_id):
         cur = conn.cursor()
         cur.execute("""
             UPDATE contacts
-            SET name = ?, email = ?, phone = ?, passport_number = ?, drivers_license_number = ?, medicare_number = ?
+            SET name = ?, email = ?, phone = ?, interest = ?, passport_number = ?, drivers_license_number = ?, medicare_number = ?
             WHERE id = ?
-        """, (name, email, phone, passport_number, drivers_license_number, medicare_number, contact_id))
+        """, (name, email, phone, interest, passport_number, drivers_license_number, medicare_number, contact_id))
         conn.commit()
 
         updated_contact_row = conn.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
