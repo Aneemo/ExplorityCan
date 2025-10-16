@@ -40,11 +40,11 @@ An attempt to expand on the Can test adding new functionality to Contact manager
 
 1. Initialize the database:
    ```sh
-   flask --app contact_manager init-db
+   python -m flask --app contact_manager init-db
    ```
 2. Run the application:
    ```sh
-   flask --app contact_manager run
+   python -m flask --app contact_manager run
    ```
 
 The application will be available at `http://127.0.0.1:5000`.
