@@ -5,7 +5,7 @@
 {% block content %}
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h1>Contact Manager</h1>
-        <a href="{{ url_for('add_contact') }}" class="button-link" style="margin-bottom: 20px;">Add New Contact</a>
+        <a href="{{ url_for('routes.add_contact') }}" class="button-link" style="margin-bottom: 20px;">Add New Contact</a>
     </div>
 
     <h2>Your Contacts</h2>
@@ -26,14 +26,7 @@
                 <td>{{ contact['email'] }}</td>
                 <td>{{ contact['phone'] }}</td>
                 <td class="actions">
-                    <a href="{{ url_for('view_contact', contact_id=contact['id']) }}" class="button-link view-link">View</a>
+                    <a href="{{ url_for('routes.view_contact', contact_id=contact['id']) }}" class="button-link view-link">View</a>
                 </td>
             </tr>
             {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>No contacts yet.</p>
-    {% endif %}
-{% endblock %}
-
