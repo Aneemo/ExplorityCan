@@ -1,24 +1,4 @@
-{% extends "base.html" %}
-
-{% block title %}View Contact - {{ contact.name }}{% endblock %}
-
-{% block content %}
-    <h1>{{ contact.name }}</h1>
-
-    <div class="contact-details">
-        <div class="detail-item">
-            <strong>Email:</strong> {{ contact.email or 'N/A' }}
-        </div>
-        <div class="detail-item">
-            <strong>Phone:</strong> {{ contact.phone or 'N/A' }}
-        </div>
-        <div class="detail-item">
-            <strong>Interest:</strong> {{ contact.interest or 'N/A' }}
-        </div>
-
-        <hr>
-
-        <div class="detail-item">
+<div class="detail-item">
             <strong>Passport Number:</strong> {{ contact.passport_number or 'N/A' }}
             {% if contact.passport_filename %}
                 <a href="{{ url_for('routes.download_file', filename=contact.passport_filename) }}" class="file-download-link">Download Passport Scan</a>
