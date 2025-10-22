@@ -5,7 +5,6 @@
                 {% if current_user.is_authenticated %}
                     {% if current_user.role == 'admin' %}
                         <a href="{{ url_for('routes.admin_dashboard') }}" class="button-link" style="background-color: #f0ad4e;">Admin Dashboard</a>
-                    {% endif %}
                     <a href="{{ url_for('routes.index') }}" class="button-link">Home</a>
                     <span>Logged in as: <strong>{{ current_user.username }}</strong></span>
                     <a href="{{ url_for('routes.logout') }}" class="button-link">Logout</a>
