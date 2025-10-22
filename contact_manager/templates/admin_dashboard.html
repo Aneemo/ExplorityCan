@@ -1,11 +1,4 @@
-{% extends "base.html" %}
-
-{% block title %}Admin Dashboard - User Management{% endblock %}
-
-{% block content %}
-    <h1>User Management</h1>
-    
-    <div class="user-list">
+<div class="user-list">
         <h2>Promote Users</h2>
         <p>Select users to promote to the 'Admin' role.</p>
         <form action="{{ url_for('routes.promote_users') }}" method="POST">
@@ -64,18 +57,3 @@
             <label for="user_id_for_key">Select User:</label>
             <select name="user_id" id="user_id_for_key" required>
                 <option value="" disabled selected>-- Choose a user --</option>
-                {% for user in users %}
-                    <option value="{{ user.id }}">{{ user.username }} (ID: {{ user.id }})</option>
-                {% endfor %}
-            </select>
-
-            <label for="api_role" style="margin-left: 20px;">Select API Role:</label>
-            <select name="api_role" id="api_role" required>
-                <option value="user" selected>User (Access to own contacts)</option>
-                <option value="admin">Admin (Access to all contacts)</option>
-            </select>
-
-            <button type="submit" style="margin-left: 20px;">Generate API Key</button>
-        </form>
-    </div>
-{% endblock %}

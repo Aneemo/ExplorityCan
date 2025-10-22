@@ -4,6 +4,7 @@
 
 {% block content %}
     <h1>Login</h1>
+    {# Flash messages are now handled by base.html #}
     <form method="POST" action="{{ url_for('routes.login') }}">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required><br><br>
