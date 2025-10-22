@@ -5,7 +5,7 @@
 {% block content %}
     <h1>Add New Contact</h1>
 
-    <form action="{{ url_for('add_contact') }}" method="POST" enctype="multipart/form-data" class="contact-form">
+    <form action="{{ url_for('routes.add_contact') }}" method="POST" enctype="multipart/form-data" class="contact-form">
         <fieldset>
             <legend>Contact Information</legend>
             <div class="form-group">
@@ -64,7 +64,7 @@
 
         <div class="form-actions">
             <button type="submit">Add Contact</button>
-            <a href="{{ url_for('index') }}" class="button-link cancel-link">Cancel</a>
+            <a href="{{ url_for('routes.index') }}" class="button-link cancel-link">Cancel</a>
         </div>
     </form>
 {% endblock %}

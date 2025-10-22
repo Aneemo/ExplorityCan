@@ -4,8 +4,7 @@
 
 {% block content %}
     <h1>Register New User</h1>
-    {# Flash messages are now handled by base.html #}
-    <form method="POST" action="{{ url_for('register') }}">
+    <form method="POST" action="{{ url_for('routes.register') }}">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required><br><br>
 
@@ -20,5 +19,5 @@
 
         <button type="submit">Register</button>
     </form>
-    <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a>.</p>
+    <p>Already have an account? <a href="{{ url_for('routes.login') }}">Login here</a>.</p>
 {% endblock %}
