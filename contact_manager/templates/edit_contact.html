@@ -6,7 +6,7 @@
     <h1>Edit Contact</h1>
 
     {% if contact %}
-    <form action="{{ url_for('update_contact', contact_id=contact['id']) }}" method="POST" enctype="multipart/form-data" class="contact-form">
+    <form action="{{ url_for('routes.update_contact', contact_id=contact['id']) }}" method="POST" enctype="multipart/form-data" class="contact-form">
         <fieldset>
             <legend>Contact Information</legend>
             <div class="form-group">
@@ -37,7 +37,7 @@
                 <label for="passport_file">Upload New Passport:</label>
                 <input type="file" id="passport_file" name="passport_file">
                 {% if contact.passport_filename %}
-                <p class="current-file">Current file: <a href="{{ url_for('download_file', filename=contact.passport_filename) }}">{{ contact.passport_filename }}</a></p>
+                <p class="current-file">Current file: <a href="{{ url_for('routes.download_file', filename=contact.passport_filename) }}">{{ contact.passport_filename }}</a></p>
                 {% endif %}
             </div>
         </fieldset>
@@ -52,7 +52,7 @@
                 <label for="drivers_license_file">Upload New Driver's License:</label>
                 <input type="file" id="drivers_license_file" name="drivers_license_file">
                 {% if contact.drivers_license_filename %}
-                <p class="current-file">Current file: <a href="{{ url_for('download_file', filename=contact.drivers_license_filename) }}">{{ contact.drivers_license_filename }}</a></p>
+                <p class="current-file">Current file: <a href="{{ url_for('routes.download_file', filename=contact.drivers_license_filename) }}">{{ contact.drivers_license_filename }}</a></p>
                 {% endif %}
             </div>
         </fieldset>
@@ -67,18 +67,18 @@
                 <label for="medicare_file">Upload New Medicare Card:</label>
                 <input type="file" id="medicare_file" name="medicare_file">
                 {% if contact.medicare_filename %}
-                <p class="current-file">Current file: <a href="{{ url_for('download_file', filename=contact.medicare_filename) }}">{{ contact.medicare_filename }}</a></p>
+                <p class="current-file">Current file: <a href="{{ url_for('routes.download_file', filename=contact.medicare_filename) }}">{{ contact.medicare_filename }}</a></p>
                 {% endif %}
             </div>
         </fieldset>
 
         <div class="form-actions">
             <button type="submit">Update Contact</button>
-            <a href="{{ url_for('view_contact', contact_id=contact.id) }}" class="button-link cancel-link">Cancel</a>
+            <a href="{{ url_for('routes.view_contact', contact_id=contact.id) }}" class="button-link cancel-link">Cancel</a>
         </div>
     </form>
     {% else %}
     <p>Contact not found.</p>
-    <a href="{{ url_for('index') }}" class="button-link">Back to Home</a>
+    <a href="{{ url_for('routes.index') }}" class="button-link">Back to Home</a>
     {% endif %}
 {% endblock %}

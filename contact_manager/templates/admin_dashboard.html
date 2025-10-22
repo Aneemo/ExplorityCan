@@ -8,7 +8,7 @@
     <div class="user-list">
         <h2>Promote Users</h2>
         <p>Select users to promote to the 'Admin' role.</p>
-        <form action="{{ url_for('promote_users') }}" method="POST">
+        <form action="{{ url_for('routes.promote_users') }}" method="POST">
             <table>
                 <thead>
                     <tr>
@@ -51,7 +51,7 @@
             </table>
             <br>
             <button type="submit">Promote Selected Users</button>
-            <a href="{{ url_for('download_user_report') }}" class="button-link" style="background-color: #5bc0de; margin-left: 10px;">Download User Report (CSV)</a>
+            <a href="{{ url_for('routes.download_user_report') }}" class="button-link" style="background-color: #5bc0de; margin-left: 10px;">Download User Report (CSV)</a>
         </form>
     </div>
 
@@ -60,7 +60,7 @@
     <div class="api-key-management">
         <h2>API Key Management</h2>
         <p>Generate a new API key for a user. If a user already has a key, generating a new one will replace it.</p>
-        <form action="{{ url_for('generate_api_key') }}" method="POST">
+        <form action="{{ url_for('routes.generate_api_key') }}" method="POST">
             <label for="user_id_for_key">Select User:</label>
             <select name="user_id" id="user_id_for_key" required>
                 <option value="" disabled selected>-- Choose a user --</option>
