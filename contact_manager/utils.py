@@ -24,7 +24,7 @@ def send_email(to, subject, template, **kwargs):
     msg = Message(
         subject,
         recipients=[to],
-        html=render_template(template + '.html', **kwargs),
+        body=render_template(template + '.txt', **kwargs),
         sender=current_app.config['MAIL_DEFAULT_SENDER']
     )
     mail.send(msg)

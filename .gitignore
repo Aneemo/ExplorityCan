@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 contacts.db
 uploads/
+run_output.log
