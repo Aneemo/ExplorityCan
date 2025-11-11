@@ -28,6 +28,17 @@ def init_db(commit_changes=True):
         cur.execute('DROP TABLE IF EXISTS api_keys')
         cur.execute('DROP TABLE IF EXISTS users')
         cur.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
+                mfa_code TEXT,
+                mfa_code_expires_at DATETIME
+            );
+        ''')
+        cur.execute('''
             CREATE TABLE IF NOT EXISTS contacts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -42,17 +53,6 @@ def init_db(commit_changes=True):
                 medicare_filename TEXT,
                 user_id INTEGER,
                 FOREIGN KEY (user_id) REFERENCES users (id)
-            );
-        ''')
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'user',
-                mfa_code TEXT,
-                mfa_code_expires_at DATETIME
             );
         ''')
         cur.execute('''
